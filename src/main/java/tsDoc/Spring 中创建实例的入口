@@ -1,0 +1,54 @@
+ Spring 中创建实例的入口：
+ AbstractAutowireCapableBeanFactory.createBeanInstance
+
+protected BeanWrapper createBeanInstance(String beanName, RootBeanDefinition mbd, @Nullable Object[] args) {
+		// 获取bean class 对象，通过类的class 对象可以获取其构造方法，及其类的属性
+        Class<?> beanClass = this.resolveBeanClass(mbd, beanName, new Class[0]);
+        if (beanClass != null && !Modifier.isPublic(beanClass.getModifiers()) && !mbd.isNonPublicAccessAllowed()) {
+            throw new BeanCreationException(mbd.getResourceDescription(), beanName, "Bean class isn't public, and non-public access not allowed: " + beanClass.getName());
+        } else {
+            Supplier<?> instanceSupplier = mbd.getInstanceSupplier();
+            if (instanceSupplier != null) {
+                return this.obtainFromSupplier(instanceSupplier, beanName);
+            } else if (mbd.getFactoryMethodName() != null) {
+                return this.instantiateUsingFactoryMethod(beanName, mbd, args);
+            } else {
+                boolean resolved = false;
+                boolean autowireNecessary = false;
+                if (args == null) {
+                    synchronized(mbd.constructorArgumentLock) {
+                        if (mbd.resolvedConstructorOrFactoryMethod != null) {
+                            resolved = true;
+                            autowireNecessary = mbd.constructorArgumentsResolved;
+                        }
+                    }
+                }
+				/**
+				** 下面代码是重点
+				**/
+                if (resolved) {
+                	// 如果已经被解析过 则直接使用之前缓存的完成对象的创建 ，否则使用无参构造方法 创建对象
+                    return autowireNecessary ? this.autowireConstructor(beanName, mbd, (Constructor[])null, (Object[])null) : this.instantiateBean(beanName, mbd);
+                } else {
+	                /**
+					** 下面代码是重点
+					**/
+                	// 获取推断构造方法
+                    Constructor<?>[] ctors = this.determineConstructorsFromBeanPostProcessors(beanClass, beanName);
+                    // 如没有推断出米构造方法，并且 autowiremode 也不是AUTOWIRE_CONSTRUCTOR（自动选择构造方法），
+                    // 没有通过BeanDefinition 和 getbean 的方式传入参数
+                    // 在项目中一般我们在获取bean 对象时直接getbean 不会进行传参，也不会定义AUTOWIRE_CONSTRUCTOR
+                    // 所以这里一旦没有推断出来构造方法则 使用默认的无参构造方法
+                    if (ctors == null && mbd.getResolvedAutowireMode() != 3 && !mbd.hasConstructorArgumentValues() && ObjectUtils.isEmpty(args)) {
+                    	// 没有获取到推断构造方法，则使用默认的无参构造方法
+                        ctors = mbd.getPreferredConstructors();
+                        return ctors != null ? this.autowireConstructor(beanName, mbd, ctors, (Object[])null) : this.instantiateBean(beanName, mbd);
+                    } else {
+                    	// 如果获取到了推断构造方法，多个构造方法或者通过spring 自动判断加载构造方法
+
+                        return this.autowireConstructor(beanName, mbd, ctors, args);
+                    }
+                }
+            }
+        }
+}

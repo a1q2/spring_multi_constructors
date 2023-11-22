@@ -1,0 +1,12 @@
+一、bean的名称是什么？
+1、spring注解@Component、@Service等自动生成bean的命名规则
+对注解形式的bean的名字的默认处理就是：将首字母小写，再拼接后面的字符。
+特殊处理：当类的名字是以两个或以上的大写字母开头的话，bean的名字会与类名保持一致。（return beanName）
+
+——来自：AnnotationBeanNameGenerator
+2、@Bean注解
+默认情况下，使用 @Bean声明一个bean，
+bean的名称由方法名决定。
+此外，可以通过@Bean注解里面的name属性主动设置bean的名称。
+
+
